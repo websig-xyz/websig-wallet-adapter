@@ -1,0 +1,50 @@
+{
+  "name": "@websig/wallet-adapter",
+  "version": "1.0.0",
+  "description": "WebSig wallet adapter for Solana - Biometric authentication, no extensions required",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "prepublishOnly": "npm run build",
+    "test": "echo \"No tests yet\""
+  },
+  "peerDependencies": {
+    "@solana/wallet-adapter-base": "^0.9.0",
+    "@solana/web3.js": "^1.87.0"
+  },
+  "devDependencies": {
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/web3.js": "^1.87.6",
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/websig-xyz/websig-wallet-adapter"
+  },
+  "keywords": [
+    "solana",
+    "wallet",
+    "websig",
+    "wallet-adapter",
+    "biometric",
+    "passkey",
+    "web3",
+    "crypto",
+    "defi"
+  ],
+  "author": "WebSig",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/websig-xyz/websig-wallet-adapter/issues"
+  },
+  "homepage": "https://websig.xyz"
+}
