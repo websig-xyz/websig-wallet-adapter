@@ -213,18 +213,18 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       iframe.setAttribute('allow', 'clipboard-read; clipboard-write; publickey-credentials-create *; publickey-credentials-get *; payment *');
       iframe.src = url;
       
-      // Style iframe exactly like Porto's modal
+      // Style iframe similar to Porto's overlay (near top, not centered vertically)
       Object.assign(iframe.style, {
         backgroundColor: 'transparent',
         border: '0',
         borderRadius: '16px',
         width: '380px',
-        maxWidth: '90vw',
-        height: '270px',
+        maxWidth: '92vw',
+        height: '320px',
         position: 'fixed',
         left: '50%',
-        top: '50%',
-        transform: 'translate(-50%, -50%)',
+        top: '24px',
+        transform: 'translate(-50%, 0)',
         zIndex: '999999',
       });
 
@@ -239,19 +239,17 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes websigSlideUp {
+        @keyframes websigSlideDown {
           from { 
-            transform: translate(-50%, calc(-50% + 20px)) scale(0.95); 
+            transform: translate(-50%, -10px) scale(0.98); 
             opacity: 0; 
           }
           to { 
-            transform: translate(-50%, -50%) scale(1); 
+            transform: translate(-50%, 0) scale(1); 
             opacity: 1; 
           }
         }
-        iframe[data-testid="websig"] {
-          animation: websigSlideUp 0.2s ease;
-        }
+        iframe[data-testid="websig"] { animation: websigSlideDown 0.2s ease; }
       `;
       document.head.appendChild(style);
 
