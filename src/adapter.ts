@@ -16,7 +16,84 @@ import {
   WalletSignMessageError,
   WalletSignTransactionError,
 } from '@solana/wallet-adapter-base';
-import bs58 from 'bs58';
+
+// Browser-safe base58 implementation
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+const base58 = {
+  encode(buffer: Uint8Array): string {
+    if (buffer.length === 0) return '';
+    
+    let digits = [0];
+    for (let i = 0; i < buffer.length; i++) {
+      let carry = buffer[i];
+      for (let j = 0; j < digits.length; j++) {
+        carry += digits[j] << 8;
+        digits[j] = carry % 58;
+        carry = (carry / 58) | 0;
+      }
+      while (carry > 0) {
+        digits.push(carry % 58);
+        carry = (carry / 58) | 0;
+      }
+    }
+    
+    // Count leading zeros
+    let leadingZeros = 0;
+    for (let i = 0; i < buffer.length && buffer[i] === 0; i++) {
+      leadingZeros++;
+    }
+    
+    // Convert digits to string
+    let result = '';
+    for (let i = leadingZeros; i > 0; i--) {
+      result += BASE58_ALPHABET[0];
+    }
+    for (let i = digits.length - 1; i >= 0; i--) {
+      result += BASE58_ALPHABET[digits[i]];
+    }
+    
+    return result;
+  },
+  
+  decode(str: string): Uint8Array {
+    if (str.length === 0) return new Uint8Array(0);
+    
+    const bytes = [0];
+    for (let i = 0; i < str.length; i++) {
+      const value = BASE58_ALPHABET.indexOf(str[i]);
+      if (value === -1) throw new Error('Invalid base58 character');
+      
+      let carry = value;
+      for (let j = 0; j < bytes.length; j++) {
+        carry += bytes[j] * 58;
+        bytes[j] = carry & 0xff;
+        carry >>= 8;
+      }
+      while (carry > 0) {
+        bytes.push(carry & 0xff);
+        carry >>= 8;
+      }
+    }
+    
+    // Count leading zeros
+    let leadingZeros = 0;
+    for (let i = 0; i < str.length && str[i] === BASE58_ALPHABET[0]; i++) {
+      leadingZeros++;
+    }
+    
+    // Combine leading zeros with bytes
+    const result = new Uint8Array(leadingZeros + bytes.length - 1);
+    for (let i = 0; i < leadingZeros; i++) {
+      result[i] = 0;
+    }
+    for (let i = leadingZeros; i < result.length; i++) {
+      result[i] = bytes[result.length - 1 - i];
+    }
+    
+    return result;
+  }
+};
 
 // Porto-style messaging system
 interface Messenger {
@@ -65,23 +142,18 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
     const handleMessage = (event: MessageEvent) => {
       // Only accept messages from WebSig iframe
       if (event.origin !== targetOrigin) {
-        // Log for debugging but don't process
-        console.debug('Ignoring message from:', event.origin, 'expected:', targetOrigin);
         return;
       }
       
       // Handle the message
       const { topic, payload } = event.data;
       if (!topic) {
-        console.debug('Message missing topic:', event.data);
         return;
       }
       
       const listener = listeners.get(topic);
       if (listener) {
         listener(payload);
-      } else {
-        console.debug('No listener for topic:', topic);
       }
     };
     
@@ -90,10 +162,13 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
     return {
       send: (topic: string, payload: any) => {
         if (!iframe.contentWindow) {
-          console.warn('iframe.contentWindow not available');
+          console.warn('[WebSig Adapter] iframe.contentWindow not available');
           return;
         }
-        console.debug('Sending message to iframe:', topic, 'target:', targetOrigin);
+        // Only log in development
+        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+          console.debug('[WebSig Adapter] Sending message:', topic);
+        }
         iframe.contentWindow.postMessage({ topic, payload }, targetOrigin);
       },
       on: (topic: string, callback: (payload: any) => void) => {
@@ -294,7 +369,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
         requireAllSignatures: false,
         verifySignatures: false,
       });
-      const base58 = bs58.encode(serialized);
+      const base58TxString = base58.encode(serialized);
 
       // Open dialog for signing
       await this._openDialog();
@@ -307,7 +382,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
 
         const unsubscribe = this._messenger.on('websig:signed', (data) => {
           try {
-            const signature = bs58.decode(data.signature);
+            const signature = base58.decode(data.signature);
             const signed = transaction instanceof Transaction
               ? Transaction.from(signature)
               : VersionedTransaction.deserialize(signature);
@@ -327,7 +402,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
         });
 
         this._messenger.send('websig:signTransaction', {
-          transaction: base58,
+          transaction: base58TxString,
           publicKey: this._publicKey?.toBase58()
         });
       });
@@ -351,7 +426,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
     if (!this.connected) throw new WalletNotConnectedError();
 
     try {
-      const base58Message = bs58.encode(message);
+      const base58Message = base58.encode(message);
 
       // Open dialog for signing
       await this._openDialog();
@@ -364,7 +439,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
 
         const unsubscribe = this._messenger.on('websig:messageSigned', (data) => {
           try {
-            const signature = bs58.decode(data.signature);
+            const signature = base58.decode(data.signature);
             this._closeDialog();
             unsubscribe();
             resolve(signature);
