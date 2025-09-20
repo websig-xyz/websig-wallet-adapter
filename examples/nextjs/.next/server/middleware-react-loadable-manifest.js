@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> ./wallet-demo\":{\"id\":\"app/page.tsx -> ./wallet-demo\",\"files\":[\"static/chunks/_app-pages-browser_app_wallet-demo_tsx.js\"]}}"
