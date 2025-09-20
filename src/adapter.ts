@@ -18,9 +18,9 @@ import { WEBSIG_ICON } from './icon';
 export const WEBSIG_NAME = 'WebSig' as WalletName;
 
 // Production URL - change this when deploying
-// Use localhost in development, production URL otherwise
-const WEBSIG_URL = process.env.NEXT_PUBLIC_WEBSIG_URL || 
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://websig.xyz');
+// Always default to production URL unless explicitly overridden via env
+const WEBSIG_URL = process.env.NEXT_PUBLIC_WEBSIG_URL || 'https://websig.xyz';
+const WEBSIG_ORIGIN = new URL(WEBSIG_URL).origin;
 
 export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
   name = WEBSIG_NAME;
@@ -31,6 +31,12 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
   private _connecting = false;
   private _publicKey: PublicKey | null = null;
   private _responseHandlers = new Map<string, { resolve: Function; reject: Function }>();
+  private _targetWindow: Window | null = null;
+  private _iframeElement: HTMLIFrameElement | null = null;
+  private _targetOrigin: string = WEBSIG_ORIGIN;
+  private _dialogElement: HTMLDialogElement | null = null;
+  private _styleElement: HTMLStyleElement | null = null;
+  private _openerElement: HTMLElement | null = null;
 
   constructor() {
     super();
@@ -57,7 +63,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
 
   private _handleMessage(event: MessageEvent) {
     // Security: Only accept messages from WebSig
-    if (event.origin !== WEBSIG_URL) return;
+    if (event.origin !== this._targetOrigin) return;
     
     const { type, id, error, ...data } = event.data;
     
@@ -98,6 +104,9 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
     if (!this.connected) {
       throw new WalletNotConnectedError();
     }
+    if (!this._targetWindow || (this._targetWindow as any).closed) {
+      throw new WalletNotConnectedError();
+    }
     
     const id = Math.random().toString(36).substr(2, 9);
     
@@ -105,12 +114,18 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       this._responseHandlers.set(id, { resolve, reject });
       
       // Send message to the iframe/window that has our wallet
-      window.postMessage({
-        source: 'websig-adapter',
-        id,
-        method,
-        params,
-      }, WEBSIG_URL);
+      try {
+        this._targetWindow!.postMessage({
+          source: 'websig-adapter',
+          id,
+          method,
+          params,
+        }, this._targetOrigin);
+      } catch (err) {
+        this._responseHandlers.delete(id);
+        reject(err);
+        return;
+      }
       
       // Timeout after 30 seconds
       setTimeout(() => {
@@ -142,23 +157,18 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       // Detect mobile for better UX
       const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
       
-      // Check if we're in a cross-origin context
-      // Note: Different ports on localhost are considered cross-origin
-      const isCrossOrigin = window.location.origin !== WEBSIG_URL;
-      
       if (isMobile) {
         // Mobile: Open in same tab with return URL
         url.searchParams.set('return', window.location.href);
         window.location.href = url.toString();
-      } else if (isCrossOrigin) {
-        // Cross-origin detected (e.g., localhost:3001 → localhost:3000)
-        // Browser security prevents passkeys in cross-origin iframes
-        // Using popup as fallback for secure authentication
-        await this._createPopup(url.toString());
       } else {
-        // Same-origin: Beautiful Porto-style integrated modal
-        // This provides the best UX when deployed on same domain
-        await this._createIntegratedModal(url.toString());
+        // Prefer integrated modal. With proper Permissions-Policy headers on host,
+        // cross-origin WebAuthn works. Fallback to popup if it fails.
+        try {
+          await this._createIntegratedModal(url.toString());
+        } catch (e) {
+          await this._createPopup(url.toString());
+        }
       }
     } catch (error: any) {
       this.emit('error', error);
@@ -313,11 +323,25 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       // Listen for connection messages from iframe
       const handleMessage = (event: MessageEvent) => {
         // Check if the message is from our iframe (WebSig origin)
-        if (event.origin !== WEBSIG_URL) return;
+        if (event.origin !== this._targetOrigin) return;
         
         if (event.data.type === 'websig:connected') {
           this._publicKey = new PublicKey(event.data.publicKey);
           window.removeEventListener('message', handleMessage);
+          // Persist the iframe for subsequent requests by moving it out of the dialog
+          try {
+            iframe.style.background = 'transparent';
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            document.body.appendChild(iframe);
+            this._iframeElement = iframe;
+            this._targetWindow = iframe.contentWindow;
+            this._targetOrigin = new URL(url).origin;
+          } catch {}
           cleanup();
           this.emit('connect', this._publicKey);
           resolve();
@@ -372,8 +396,8 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       
       // Listen for messages from the popup (WebSig will post a message when connected)
       const handleMessage = (event: MessageEvent) => {
-        // Verify the origin matches WEBSIG_URL
-        if (event.origin !== WEBSIG_URL) {
+        // Verify the origin matches target origin
+        if (event.origin !== this._targetOrigin) {
           return;
         }
         
@@ -431,6 +455,14 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
   private _handleDisconnect() {
     this._publicKey = null;
     this._responseHandlers.clear();
+    // Clean up hidden iframe/channel
+    try {
+      if (this._iframeElement && this._iframeElement.parentNode) {
+        this._iframeElement.parentNode.removeChild(this._iframeElement);
+      }
+    } catch {}
+    this._iframeElement = null;
+    this._targetWindow = null;
     
     this.emit('disconnect');
   }

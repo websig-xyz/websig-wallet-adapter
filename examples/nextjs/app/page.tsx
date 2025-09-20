@@ -7,7 +7,7 @@ import {
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
-import { WebSigWalletAdapter } from '../../../src/adapter';
+import { WebSigWalletAdapter } from '@websig/wallet-adapter';
 // In production, you'd use: import { WebSigWalletAdapter } from '@websig/wallet-adapter';
 
 // Import wallet adapter CSS
@@ -39,12 +39,6 @@ export default function Home() {
 
   // Initialize wallets
   const wallets = useMemo(() => {
-    // In browser, check if we're on localhost and adjust WebSig URL
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      // For local testing - WebSig should be running on port 3000 (default)
-      process.env.NEXT_PUBLIC_WEBSIG_URL = 'http://localhost:3000';
-    }
-    
     return [
       new WebSigWalletAdapter(),
       // You can add other wallets here if needed:

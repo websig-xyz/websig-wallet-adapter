@@ -23,6 +23,7 @@ export default function WalletDemo() {
   const [signing, setSigning] = useState(false);
   const [txSignature, setTxSignature] = useState<string>('');
   const [msgSignature, setMsgSignature] = useState<string>('');
+  const [copied, setCopied] = useState<string>('');
 
   // Fetch balance when wallet connects
   useEffect(() => {
@@ -94,6 +95,14 @@ export default function WalletDemo() {
     }
   }, [signMessage]);
 
+  const copyToClipboard = useCallback(async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(''), 1200);
+    } catch {}
+  }, []);
+
   return (
     <div className="container">
       {/* Minimal header */}
@@ -143,9 +152,18 @@ export default function WalletDemo() {
           <div className="max-w-2xl mx-auto bg-zinc-900/50 backdrop-blur border border-zinc-800 rounded-2xl p-8">
             <div className="text-center mb-8">
               <p className="text-zinc-500 text-sm mb-2">CONNECTED WALLET</p>
-              <p className="font-mono text-zinc-300 text-sm">
-                {publicKey.toString().slice(0, 8)}...{publicKey.toString().slice(-8)}
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="font-mono text-zinc-300 text-sm">
+                  {publicKey.toString().slice(0, 8)}...{publicKey.toString().slice(-8)}
+                </p>
+                <button
+                  onClick={() => copyToClipboard(publicKey.toString(), 'address')}
+                  className="text-xs text-zinc-500 hover:text-zinc-300"
+                  aria-label="Copy address"
+                >
+                  {copied === 'address' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
               {balance !== null && (
                 <p className="text-3xl font-bold text-white mt-4">
                   {balance.toFixed(4)} SOL
@@ -177,9 +195,18 @@ export default function WalletDemo() {
                 {msgSignature && (
                   <div className="mb-4">
                     <p className="text-zinc-500 text-xs mb-2">SIGNATURE</p>
-                    <p className="font-mono text-zinc-400 text-xs break-all">
-                      {msgSignature.slice(0, 64)}...
-                    </p>
+                    <div className="flex items-start gap-2">
+                      <p className="font-mono text-zinc-400 text-xs break-all">
+                        {msgSignature.slice(0, 64)}...
+                      </p>
+                      <button
+                        onClick={() => copyToClipboard(msgSignature, 'sig')}
+                        className="text-xs text-zinc-500 hover:text-zinc-300 whitespace-nowrap"
+                        aria-label="Copy signature"
+                      >
+                        {copied === 'sig' ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
                   </div>
                 )}
                 {txSignature && (
