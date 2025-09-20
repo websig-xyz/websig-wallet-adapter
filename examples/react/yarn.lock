@@ -810,10 +810,10 @@
   dependencies:
     "@wallet-standard/base" "^1.1.0"
 
-"@websig/wallet-adapter@^1.2.4":
-  version "1.2.4"
-  resolved "https://registry.yarnpkg.com/@websig/wallet-adapter/-/wallet-adapter-1.2.4.tgz#d61423ff748dab8abdc022bf2bda961dd7374709"
-  integrity sha512-8cD0EsS7WT/sltnn2OyPXjt5o92/yeu7LV6I72sTze4LQdTBu+oW/eNktPWqnbyIhI7w3yoNx6FoRvwxAwC9rw==
+"@websig/wallet-adapter@^1.2.5":
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/@websig/wallet-adapter/-/wallet-adapter-1.2.5.tgz#d6241fafaddae3e7d32fbafd8d42c9716a3f73cf"
+  integrity sha512-ITydcud28gHcI2skUxPRTIAm+arRipkkv/mM/c+qzAV6YC9e2njakv6PD7cBagst7GW1Eb9evnReejtkThCYzA==
 
 agentkeepalive@^4.5.0:
   version "4.6.0"

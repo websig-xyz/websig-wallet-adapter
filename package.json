@@ -1,6 +1,6 @@
 {
   "name": "@websig/wallet-adapter",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "WebSig wallet adapter for Solana - Biometric authentication, no extensions required",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

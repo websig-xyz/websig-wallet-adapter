@@ -211,7 +211,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       iframe.setAttribute('data-testid', 'websig');
       iframe.setAttribute('title', 'WebSig');
       iframe.setAttribute('tabindex', '0');
-      iframe.setAttribute('allow', 'publickey-credentials-create *; publickey-credentials-get *; clipboard-write');
+      iframe.setAttribute('allow', 'publickey-credentials-get; publickey-credentials-create; clipboard-write');
       
       // Include the origin in the URL so WebSig knows who's connecting
       const connectUrl = new URL(`${this._websigUrl}/connect`);
