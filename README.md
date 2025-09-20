@@ -170,6 +170,38 @@ Check out the `/examples` folder for:
 
 Apache 2.0 - See [LICENSE](LICENSE) file for details
 
+## 🎮 Live Examples
+
+We have **fully functional examples** ready to test:
+
+### 📄 Vanilla JavaScript
+Open `examples/vanilla.html` directly in your browser. No build step required!
+
+Features:
+- Connect/disconnect wallet
+- Sign messages & transactions  
+- Display balance
+- Environment switcher
+
+### ⚛️ React Application
+```bash
+cd examples/react
+npm install
+npm run dev
+```
+
+A complete React app with:
+- Full wallet adapter integration
+- Beautiful wallet modal UI
+- Send transactions
+- Sign messages
+
+Both examples work with:
+- **Production**: https://websig.xyz (default)
+- **Local Development**: http://localhost:3001
+
+[📖 See examples/README.md for detailed instructions](./examples/README.md)
+
 ## 🤔 FAQ
 
 **Q: Do users need to install anything?**  

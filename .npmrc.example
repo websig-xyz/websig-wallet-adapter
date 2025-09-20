@@ -1,0 +1,10 @@
+# Example NPM configuration for publishing
+# 
+# To use:
+# 1. Copy this file to .npmrc
+# 2. Replace YOUR_NPM_TOKEN with your actual token from npmjs.com
+# 3. Never commit .npmrc to git (it's in .gitignore)
+
+//registry.npmjs.org/:_authToken=YOUR_NPM_TOKEN
+registry=https://registry.npmjs.org/
+always-auth=true

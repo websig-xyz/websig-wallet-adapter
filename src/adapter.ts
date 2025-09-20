@@ -6,7 +6,6 @@ import {
   WalletNotConnectedError,
   WalletSignTransactionError,
   WalletSignMessageError,
-  WalletNotReadyError,
   isVersionedTransaction,
 } from '@solana/wallet-adapter-base';
 import {
@@ -20,16 +19,6 @@ export const WEBSIG_NAME = 'WebSig' as WalletName;
 
 // Production URL - change this when deploying
 const WEBSIG_URL = process.env.NEXT_PUBLIC_WEBSIG_URL || 'https://websig.xyz';
-
-interface WebSigWindow extends Window {
-  websig?: {
-    isWebSig: boolean;
-    connect: () => Promise<{ publicKey: PublicKey }>;
-    disconnect: () => Promise<void>;
-    signTransaction: (transaction: Transaction) => Promise<Transaction>;
-    signMessage: (message: Uint8Array) => Promise<{ signature: Uint8Array }>;
-  };
-}
 
 export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
   name = WEBSIG_NAME;
