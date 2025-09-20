@@ -186,55 +186,49 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
         (modal as HTMLElement).style.display = 'none';
       });
 
-      // Create native dialog element like Porto
-      const dialog = document.createElement('dialog');
-      dialog.dataset.websig = '';
-      dialog.setAttribute('role', 'dialog');
-      dialog.setAttribute('aria-label', 'WebSig Wallet');
-      
-      // Style the dialog itself to be transparent
-      Object.assign(dialog.style, {
-        background: 'transparent',
-        border: '0',
-        outline: '0',
-        padding: '0',
+      // Create backdrop overlay (like Porto)
+      const backdrop = document.createElement('div');
+      backdrop.className = 'websig-backdrop';
+      Object.assign(backdrop.style, {
         position: 'fixed',
-        maxWidth: '100vw',
-        maxHeight: '100vh',
+        top: '0',
+        left: '0',
+        right: '0',
+        bottom: '0',
+        background: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(4px)',
+        zIndex: '999998',
+        animation: 'websigFadeIn 0.2s ease',
       });
 
-      // Create iframe
+      // Create iframe directly (no dialog wrapper)
       const iframe = document.createElement('iframe');
       iframe.setAttribute('data-testid', 'websig');
       iframe.setAttribute('tabindex', '0');
       iframe.setAttribute('title', 'WebSig');
-      // Allow clipboard access and other necessary permissions
-      // Include all WebAuthn permissions and mark as same-origin
       iframe.setAttribute('allow', 'clipboard-read; clipboard-write; publickey-credentials-create *; publickey-credentials-get *; payment *');
       iframe.src = url;
       
-      // Style iframe similar to Porto's overlay (near top, not centered vertically)
+      // Style iframe like Porto - floating overlay
       Object.assign(iframe.style, {
-        backgroundColor: 'transparent',
-        border: '0',
-        borderRadius: '16px',
+        position: 'fixed',
+        top: '24px',
+        left: '50%',
+        transform: 'translate(-50%, 0)',
         width: '380px',
         maxWidth: '92vw',
         height: '320px',
-        position: 'fixed',
-        left: '50%',
-        top: '24px',
-        transform: 'translate(-50%, 0)',
+        backgroundColor: 'transparent',
+        border: '0',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         zIndex: '999999',
+        animation: 'websigSlideDown 0.2s ease',
       });
 
-      // Add styles for backdrop and animations like Porto
+      // Add animation styles
       const style = document.createElement('style');
       style.innerHTML = `
-        dialog[data-websig]::backdrop {
-          background: rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(4px);
-        }
         @keyframes websigFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -249,30 +243,26 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
             opacity: 1; 
           }
         }
-        iframe[data-testid="websig"] { animation: websigSlideDown 0.2s ease; }
       `;
       document.head.appendChild(style);
 
       // Store body style to restore later (like Porto)
-      let bodyStyle: CSSStyleDeclaration | null = null;
+      let bodyStyle: string | null = null;
       let opener: HTMLElement | null = null;
 
       // Function to cleanup and restore
       const cleanup = () => {
         // Restore body scroll
-        if (bodyStyle) {
-          Object.assign(document.body.style, bodyStyle);
-          document.body.style.overflow = bodyStyle.overflow ?? '';
-        }
-        
-        // Close dialog
-        if (dialog.open) {
-          dialog.close();
+        if (bodyStyle !== null) {
+          document.body.style.overflow = bodyStyle;
         }
         
         // Remove from DOM
-        if (dialog.parentNode) {
-          dialog.remove();
+        if (backdrop.parentNode) {
+          backdrop.remove();
+        }
+        if (iframe.parentNode) {
+          iframe.remove();
         }
         
         // Remove styles
@@ -291,32 +281,26 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
         });
       };
 
-      // Handle backdrop click (dialog handles this natively)
-      dialog.addEventListener('click', (e) => {
-        // Check if click was on the backdrop (outside iframe)
-        const rect = iframe.getBoundingClientRect();
-        const clickedInside = 
-          e.clientX >= rect.left && 
-          e.clientX <= rect.right && 
-          e.clientY >= rect.top && 
-          e.clientY <= rect.bottom;
-          
-        if (!clickedInside) {
-          cleanup();
-          if (!this.connected) {
-            reject(new WalletConnectionError('Connection cancelled'));
-          }
-        }
-      });
-
-      // Handle escape key (dialog handles this natively too)
-      dialog.addEventListener('cancel', (e) => {
-        e.preventDefault();
+      // Handle backdrop click
+      backdrop.addEventListener('click', (e) => {
         cleanup();
         if (!this.connected) {
           reject(new WalletConnectionError('Connection cancelled'));
         }
       });
+
+      // Handle escape key
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cleanup();
+          window.removeEventListener('keydown', handleKeyDown);
+          if (!this.connected) {
+            reject(new WalletConnectionError('Connection cancelled'));
+          }
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
 
       // Listen for connection messages from iframe
       const handleMessage = (event: MessageEvent) => {
@@ -326,16 +310,15 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
         if (event.data.type === 'websig:connected') {
           this._publicKey = new PublicKey(event.data.publicKey);
           window.removeEventListener('message', handleMessage);
-          // Persist the iframe for subsequent requests by moving it out of the dialog
+          window.removeEventListener('keydown', handleKeyDown);
+          // Persist the iframe for subsequent requests by hiding it
           try {
-            iframe.style.background = 'transparent';
-            iframe.style.position = 'absolute';
             iframe.style.width = '0';
             iframe.style.height = '0';
-            iframe.style.border = '0';
             iframe.style.opacity = '0';
             iframe.style.pointerEvents = 'none';
-            document.body.appendChild(iframe);
+            iframe.style.position = 'absolute';
+            iframe.style.left = '-9999px';
             this._iframeElement = iframe;
             this._targetWindow = iframe.contentWindow;
             this._targetOrigin = new URL(url).origin;
@@ -345,6 +328,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
           resolve();
         } else if (event.data.type === 'websig:rejected') {
           window.removeEventListener('message', handleMessage);
+          window.removeEventListener('keydown', handleKeyDown);
           cleanup();
           reject(new WalletConnectionError('User rejected the connection'));
         }
@@ -352,21 +336,20 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       
       window.addEventListener('message', handleMessage);
 
-      // Build dialog structure
-      dialog.appendChild(iframe);
-      document.body.appendChild(dialog);
+      // Append elements directly to body (no dialog wrapper)
+      document.body.appendChild(backdrop);
+      document.body.appendChild(iframe);
       
       // Store current focused element
       if (document.activeElement instanceof HTMLElement) {
         opener = document.activeElement;
       }
       
-      // Store body styles and prevent scrolling
-      bodyStyle = Object.assign({}, document.body.style);
+      // Store body overflow and prevent scrolling
+      bodyStyle = document.body.style.overflow || '';
       document.body.style.overflow = 'hidden';
       
-      // Show the dialog as modal (like Porto)
-      dialog.showModal();
+      // Focus the iframe
       iframe.focus();
     });
   }
