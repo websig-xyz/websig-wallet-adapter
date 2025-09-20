@@ -63,17 +63,38 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
     const listeners = new Map<string, (payload: any) => void>();
     
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== targetOrigin) return;
+      // Only accept messages from WebSig iframe
+      if (event.origin !== targetOrigin) {
+        // Log for debugging but don't process
+        console.debug('Ignoring message from:', event.origin, 'expected:', targetOrigin);
+        return;
+      }
+      
+      // Handle the message
       const { topic, payload } = event.data;
+      if (!topic) {
+        console.debug('Message missing topic:', event.data);
+        return;
+      }
+      
       const listener = listeners.get(topic);
-      if (listener) listener(payload);
+      if (listener) {
+        listener(payload);
+      } else {
+        console.debug('No listener for topic:', topic);
+      }
     };
     
     window.addEventListener('message', handleMessage);
     
     return {
       send: (topic: string, payload: any) => {
-        iframe.contentWindow?.postMessage({ topic, payload }, targetOrigin);
+        if (!iframe.contentWindow) {
+          console.warn('iframe.contentWindow not available');
+          return;
+        }
+        console.debug('Sending message to iframe:', topic, 'target:', targetOrigin);
+        iframe.contentWindow.postMessage({ topic, payload }, targetOrigin);
       },
       on: (topic: string, callback: (payload: any) => void) => {
         listeners.set(topic, callback);
@@ -116,7 +137,12 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       iframe.setAttribute('title', 'WebSig');
       iframe.setAttribute('tabindex', '0');
       iframe.setAttribute('allow', 'publickey-credentials-create *; publickey-credentials-get *; clipboard-write');
-      iframe.src = `${this._websigUrl}/connect`;
+      
+      // Include the origin in the URL so WebSig knows who's connecting
+      const connectUrl = new URL(`${this._websigUrl}/connect`);
+      connectUrl.searchParams.set('origin', window.location.origin);
+      connectUrl.searchParams.set('name', window.location.hostname);
+      iframe.src = connectUrl.toString();
       
       // Style iframe to fill dialog
       Object.assign(iframe.style, {
@@ -207,7 +233,6 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       // Send connect request after iframe loads
       iframe.addEventListener('load', () => {
         this._messenger?.send('websig:connect', {
-          origin: window.location.origin,
           adapter: 'websig-wallet-adapter'
         });
       });
