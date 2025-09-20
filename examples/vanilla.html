@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSig Wallet - Vanilla JS Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 20px;
+      color: white;
+    }
+    
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+    
+    h1 {
+      margin-bottom: 10px;
+      font-size: 2em;
+    }
+    
+    .subtitle {
+      opacity: 0.9;
+      margin-bottom: 30px;
+    }
+    
+    button {
+      background: white;
+      color: #667eea;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 10px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .status {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      word-break: break-all;
+    }
+    
+    .connected {
+      color: #4ade80;
+    }
+    
+    .disconnected {
+      color: #f87171;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: white;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🔐</div>
+    <h1>WebSig Wallet</h1>
+    <p class="subtitle">Biometric Web3 Authentication</p>
+    
+    <button id="connectBtn">Connect Wallet</button>
+    <button id="disconnectBtn" disabled>Disconnect</button>
+    <button id="signBtn" disabled>Sign Message</button>
+    
+    <div class="status">
+      <div id="statusText" class="disconnected">Not Connected</div>
+      <div id="publicKey"></div>
+    </div>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+  
+  <!-- In production, you'd load from NPM or CDN -->
+  <script type="module">
+    // Import the WebSig adapter (in real app, you'd import from npm)
+    // For this example, we'll simulate the adapter
+    
+    class WebSigWalletAdapter {
+      constructor() {
+        this.name = 'WebSig';
+        this.url = 'https://websig.xyz';
+        this.publicKey = null;
+        this._popup = null;
+        this._connected = false;
+      }
+      
+      async connect() {
+        // Open WebSig in popup
+        const width = 420;
+        const height = 600;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2;
+        
+        this._popup = window.open(
+          `${this.url}/connect?origin=${encodeURIComponent(window.location.origin)}&name=Demo`,
+          'WebSig Wallet',
+          `width=${width},height=${height},left=${left},top=${top}`
+        );
+        
+        // Wait for connection message
+        return new Promise((resolve, reject) => {
+          const handleMessage = (event) => {
+            if (event.origin !== this.url) return;
+            
+            if (event.data.type === 'websig:connected') {
+              this.publicKey = new solanaWeb3.PublicKey(event.data.publicKey);
+              this._connected = true;
+              window.removeEventListener('message', handleMessage);
+              resolve({ publicKey: this.publicKey });
+            }
+          };
+          
+          window.addEventListener('message', handleMessage);
+          
+          // Check if popup is closed
+          const checkInterval = setInterval(() => {
+            if (this._popup?.closed) {
+              clearInterval(checkInterval);
+              window.removeEventListener('message', handleMessage);
+              reject(new Error('Connection cancelled'));
+            }
+          }, 500);
+        });
+      }
+      
+      async disconnect() {
+        if (this._popup && !this._popup.closed) {
+          this._popup.close();
+        }
+        this.publicKey = null;
+        this._connected = false;
+      }
+      
+      async signMessage(message) {
+        if (!this._connected) throw new Error('Not connected');
+        
+        // Focus popup
+        this._popup?.focus();
+        
+        // Send message to sign
+        const id = Math.random().toString(36).substr(2, 9);
+        this._popup?.postMessage({
+          source: 'websig-adapter',
+          id,
+          method: 'signMessage',
+          params: { message: btoa(String.fromCharCode(...message)) }
+        }, this.url);
+        
+        // Wait for signature
+        return new Promise((resolve, reject) => {
+          const handleMessage = (event) => {
+            if (event.origin !== this.url) return;
+            if (event.data.id !== id) return;
+            
+            window.removeEventListener('message', handleMessage);
+            
+            if (event.data.error) {
+              reject(new Error(event.data.error));
+            } else {
+              resolve(event.data.signature);
+            }
+          };
+          
+          window.addEventListener('message', handleMessage);
+        });
+      }
+    }
+    
+    // Initialize wallet
+    const wallet = new WebSigWalletAdapter();
+    
+    // UI Elements
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const signBtn = document.getElementById('signBtn');
+    const statusText = document.getElementById('statusText');
+    const publicKeyDiv = document.getElementById('publicKey');
+    
+    // Connect wallet
+    connectBtn.addEventListener('click', async () => {
+      try {
+        connectBtn.disabled = true;
+        connectBtn.textContent = 'Connecting...';
+        
+        await wallet.connect();
+        
+        // Update UI
+        statusText.textContent = 'Connected';
+        statusText.className = 'connected';
+        publicKeyDiv.textContent = `Public Key: ${wallet.publicKey.toString()}`;
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        signBtn.disabled = false;
+        
+      } catch (error) {
+        console.error('Connection failed:', error);
+        connectBtn.disabled = false;
+        connectBtn.textContent = 'Connect Wallet';
+        alert('Connection failed: ' + error.message);
+      }
+    });
+    
+    // Disconnect wallet
+    disconnectBtn.addEventListener('click', async () => {
+      await wallet.disconnect();
+      
+      statusText.textContent = 'Not Connected';
+      statusText.className = 'disconnected';
+      publicKeyDiv.textContent = '';
+      connectBtn.disabled = false;
+      connectBtn.textContent = 'Connect Wallet';
+      disconnectBtn.disabled = true;
+      signBtn.disabled = true;
+    });
+    
+    // Sign message
+    signBtn.addEventListener('click', async () => {
+      try {
+        const message = new TextEncoder().encode('Hello WebSig!');
+        const signature = await wallet.signMessage(message);
+        alert('Message signed! Signature: ' + signature);
+      } catch (error) {
+        console.error('Signing failed:', error);
+        alert('Signing failed: ' + error.message);
+      }
+    });
+  </script>
+</body>
+</html>
