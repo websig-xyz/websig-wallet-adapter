@@ -7,9 +7,7 @@ const nextConfig = {
       headers: [
         // Enable cross-origin WebAuthn in iframes (Chromium-based)
         { key: 'Permissions-Policy', value: 'publickey-credentials-get=("*"); publickey-credentials-create=("*")' },
-        // Allow embedding websig.xyz as cross-origin iframe
-        { key: 'X-Frame-Options', value: 'ALLOWALL' },
-        // Allow framing from our domain
+        // Allow framing from our domain (who can embed this example)
         { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://websig.xyz;" },
       ],
     },
