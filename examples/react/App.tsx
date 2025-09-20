@@ -165,14 +165,18 @@ function WalletDemo() {
 function App() {
   // Configure endpoint - can be mainnet, devnet, or custom RPC
   const endpoint = useMemo(() => {
-    // For production
-    return clusterApiUrl('mainnet-beta');
+    // Use a reliable RPC endpoint
+    // Option 1: Use Helius free tier (reliable for testing)
+    return 'https://sparkling-attentive-replica.solana-mainnet.quiknode.pro/b83cf5c147d67a45906264e195574aa2a0150568/';
     
-    // For testing on devnet (free SOL from faucet)
+    // Option 2: Use public Solana RPC (may have rate limits)
+    // return clusterApiUrl('mainnet-beta');
+    
+    // Option 3: For testing on devnet (free SOL from faucet)
     // return clusterApiUrl('devnet');
     
-    // For custom RPC (e.g., QuickNode)
-    // return 'https://your-rpc-endpoint.com';
+    // Option 4: Use your own RPC (QuickNode, Alchemy, etc.)
+    // return process.env.REACT_APP_RPC_URL || 'https://your-rpc-endpoint.com';
   }, []);
   
   // Initialize wallets
@@ -181,8 +185,8 @@ function App() {
     // In production, the adapter will use https://websig.xyz by default
     // For local development, you can override it:
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      // If testing locally, WebSig adapter will use localhost:3001
-      process.env.NEXT_PUBLIC_WEBSIG_URL = 'http://localhost:3001';
+      // If testing locally, WebSig adapter will automatically use localhost:3000
+      process.env.NEXT_PUBLIC_WEBSIG_URL = 'http://localhost:3000';
     }
     
     return [

@@ -24,8 +24,8 @@ npx serve .
 python3 -m http.server 8000
 ```
 
-### 2. React Application (`react/`)
-A complete React app using the standard Solana wallet adapter libraries.
+### 2. Next.js Application (`nextjs/`)
+A modern Next.js 15 + React 19 app using the standard Solana wallet adapter.
 
 **Features:**
 - Full wallet adapter integration
@@ -33,14 +33,29 @@ A complete React app using the standard Solana wallet adapter libraries.
 - Send transactions
 - Sign messages
 - Balance display
-- Works with all wallet adapter features
+- Server-side rendering support
+- No Buffer polyfill issues
+
+**How to run:**
+```bash
+cd nextjs
+yarn install
+yarn dev      # Opens at http://localhost:3001 by default
+
+# Or use a different port:
+yarn dev -p 3004
+```
+
+### 3. React + Vite (`react/`) - Legacy
+A React app using Vite bundler (kept for reference).
+
+**Note:** The Next.js example is recommended over this one as it handles Node.js polyfills better.
 
 **How to run:**
 ```bash
 cd react
-yarn install  # or npm install
-yarn dev      # or npm run dev
-# Opens at http://localhost:3000
+yarn install
+yarn dev --port 3005  # Different port to avoid conflicts
 ```
 
 ## 🔧 Environment Configuration
@@ -51,9 +66,9 @@ Both examples support two environments:
    - Use this when testing with the live WebSig app
    - No setup required
 
-2. **Local Development** (http://localhost:3001)
+2. **Local Development** (http://localhost:3000)
    - Use this when developing WebSig locally
-   - Start WebSig first: `PORT=3001 yarn dev` in the main WebSig directory
+   - Start WebSig first: `yarn dev` in the main WebSig directory (defaults to port 3000)
 
 ### Switching Environments
 
@@ -76,13 +91,12 @@ Both examples support two environments:
 1. Start WebSig locally:
    ```bash
    cd ../../.. # Go to main WebSig directory
-   PORT=3001 yarn dev    # Starts on http://localhost:3001
-   # Note: PORT=3001 is important to avoid conflicts with the React example
+   yarn dev    # Starts on http://localhost:3000
    ```
 
 2. Open the example:
    - **Vanilla**: Open `vanilla.html` and select "Local Dev" from dropdown
-   - **React**: Just run `yarn dev` - it auto-detects localhost
+   - **React**: Run `yarn dev --port 3004` (to avoid conflict with WebSig on port 3000)
 
 3. Connect and test!
 

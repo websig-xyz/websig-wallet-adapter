@@ -103,6 +103,22 @@ WebSig works with all standard Solana wallet adapters:
 
 ## 🔧 Configuration
 
+### RPC Endpoint (Important!)
+
+The public Solana RPC has strict rate limits and often returns 403 errors. Use a reliable RPC provider:
+
+```typescript
+// Recommended: Use a dedicated RPC provider
+const endpoint = 'https://your-quicknode-endpoint.com'; // QuickNode
+// const endpoint = 'https://mainnet.helius-rpc.com/?api-key=YOUR_KEY'; // Helius
+// const endpoint = 'https://solana-mainnet.g.alchemy.com/v2/YOUR_KEY'; // Alchemy
+
+// Pass to ConnectionProvider
+<ConnectionProvider endpoint={endpoint}>
+  {/* Your app */}
+</ConnectionProvider>
+```
+
 ### Custom WebSig URL (for development)
 
 ```typescript
@@ -114,6 +130,18 @@ const wallet = new WebSigWalletAdapter({
   url: 'http://localhost:3000'
 });
 ```
+
+### Connection Modes
+
+WebSig automatically selects the optimal connection mode:
+
+| Environment | Mode | Experience |
+|------------|------|------------|
+| **Same Domain** (prod) | Inline Modal | Beautiful Porto-style modal with full passkey support |
+| **Cross-Origin** (dev) | Popup Window | Clean popup for secure authentication |
+| **Mobile** | New Tab | Full-screen with automatic return |
+
+For the best production experience, deploy your DApp and WebSig on the same domain.
 
 ## 🏗️ Architecture
 

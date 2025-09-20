@@ -160,7 +160,7 @@
     <label>Environment: 
       <select id="envSelect">
         <option value="https://websig.xyz">Production (websig.xyz)</option>
-        <option value="http://localhost:3001">Local Dev (localhost:3001)</option>
+        <option value="http://localhost:3000">Local Dev (localhost:3000)</option>
       </select>
     </label>
   </div>
@@ -525,7 +525,7 @@
     
     // Set default environment based on current location
     if (window.location.hostname === 'localhost') {
-      envSelect.value = 'http://localhost:3001';
+      envSelect.value = 'http://localhost:3000';
     }
   </script>
 </body>
