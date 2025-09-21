@@ -1,12 +1,8 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'WebSig Wallet Demo',
-  description: 'Next.js 15 example for WebSig wallet adapter',
+  title: 'WebSig Example',
+  description: 'WebSig wallet adapter example',
 }
 
 export default function RootLayout({
@@ -16,7 +12,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body style={{ margin: 0, padding: 0, fontFamily: 'system-ui' }}>
+        {children}
+      </body>
     </html>
   )
 }
