@@ -41,6 +41,7 @@ export default function Home() {
   const wallets = useMemo(() => {
     return [
       new WebSigWalletAdapter(),
+      // The adapter will auto-detect localhost and handle it properly
       // You can add other wallets here if needed:
       // new PhantomWalletAdapter(),
       // new SolflareWalletAdapter(),

@@ -102,6 +102,10 @@ interface Messenger {
   destroy: () => void;
 }
 
+export interface WebSigWalletAdapterConfig {
+  websigUrl?: string;
+}
+
 export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
   name = 'WebSig' as WalletName<'WebSig'>;
   url = 'https://websig.xyz';
@@ -113,10 +117,11 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
   private _dialog: HTMLDialogElement | null = null;
   private _iframe: HTMLIFrameElement | null = null;
   private _messenger: Messenger | null = null;
-  private _websigUrl = 'https://websig.xyz';
+  private _websigUrl: string;
 
-  constructor() {
+  constructor(config?: WebSigWalletAdapterConfig) {
     super();
+    this._websigUrl = config?.websigUrl || 'https://websig.xyz';
   }
 
   get publicKey() {
@@ -140,7 +145,7 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
     const listeners = new Map<string, (payload: any) => void>();
     
     const handleMessage = (event: MessageEvent) => {
-      // Only accept messages from WebSig iframe
+      // Only accept messages from the configured WebSig URL
       if (event.origin !== targetOrigin) {
         return;
       }
@@ -211,7 +216,8 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       iframe.setAttribute('data-testid', 'websig');
       iframe.setAttribute('title', 'WebSig');
       iframe.setAttribute('tabindex', '0');
-      iframe.setAttribute('allow', 'publickey-credentials-get; publickey-credentials-create; clipboard-write');
+      // Critical: Allow WebAuthn and clipboard for the iframe
+      iframe.setAttribute('allow', 'publickey-credentials-get *; publickey-credentials-create *; clipboard-write');
       
       // Include the origin in the URL so WebSig knows who's connecting
       const connectUrl = new URL(`${this._websigUrl}/connect`);
