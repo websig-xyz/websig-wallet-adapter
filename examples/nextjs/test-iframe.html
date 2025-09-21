@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test WebSig iframe</title>
+</head>
+<body>
+    <h1>Testing WebSig iframe communication</h1>
+    <iframe 
+        id="websig-iframe"
+        src="https://websig.xyz/connect?origin=http://localhost:8080"
+        allow="publickey-credentials-get; publickey-credentials-create; clipboard-write"
+        style="width: 600px; height: 700px; border: 1px solid #ccc;">
+    </iframe>
+    
+    <script>
+        const iframe = document.getElementById('websig-iframe');
+        
+        // Listen for messages
+        window.addEventListener('message', (event) => {
+            console.log('Parent received message from:', event.origin);
+            console.log('Message data:', event.data);
+        });
+        
+        // Send message after iframe loads
+        iframe.addEventListener('load', () => {
+            console.log('Sending message to iframe');
+            iframe.contentWindow.postMessage({
+                topic: 'websig:connect',
+                payload: { adapter: 'websig-wallet-adapter' }
+            }, 'https://websig.xyz');
+        });
+    </script>
+</body>
+</html>

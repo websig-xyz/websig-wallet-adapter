@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test</title>
+</head>
+<body>
+    <h1>Simple WebSig Test</h1>
+    <button onclick="testConnect()">Test Connect</button>
+    <div id="log"></div>
+    
+    <script>
+        function log(msg) {
+            document.getElementById('log').innerHTML += msg + '<br>';
+            console.log(msg);
+        }
+        
+        function testConnect() {
+            log('Creating iframe...');
+            const iframe = document.createElement('iframe');
+            iframe.src = 'https://websig.xyz/connect?origin=' + encodeURIComponent(window.location.origin);
+            iframe.allow = 'publickey-credentials-get; publickey-credentials-create';
+            iframe.style.width = '600px';
+            iframe.style.height = '700px';
+            iframe.style.border = '1px solid #ccc';
+            document.body.appendChild(iframe);
+            
+            // Check what the browser reports
+            iframe.onload = () => {
+                log('iframe loaded');
+                log('Parent origin: ' + window.location.origin);
+                log('iframe src: ' + iframe.src);
+                
+                // Try to send a message
+                try {
+                    iframe.contentWindow.postMessage({
+                        topic: 'websig:connect',
+                        payload: {}
+                    }, 'https://websig.xyz');
+                    log('Message sent successfully');
+                } catch(e) {
+                    log('Error sending message: ' + e.message);
+                }
+            };
+        }
+        
+        // Listen for any messages
+        window.addEventListener('message', (e) => {
+            log('Received message from: ' + e.origin);
+            log('Message data: ' + JSON.stringify(e.data));
+        });
+    </script>
+</body>
+</html>

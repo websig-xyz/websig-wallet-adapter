@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug WebSig iframe</title>
+</head>
+<body>
+    <h1>Debug WebSig iframe</h1>
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <div id="status"></div>
+    <iframe 
+        id="websig-iframe"
+        style="width: 600px; height: 700px; border: 1px solid #ccc; display: none;">
+    </iframe>
+    
+    <script>
+        // Override console methods to capture all logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            document.getElementById('status').innerHTML += '<div style="color:blue">LOG: ' + args.join(' ') + '</div>';
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            document.getElementById('status').innerHTML += '<div style="color:red">ERROR: ' + args.join(' ') + '</div>';
+            originalError.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            document.getElementById('status').innerHTML += '<div style="color:orange">WARN: ' + args.join(' ') + '</div>';
+            originalWarn.apply(console, args);
+        };
+        
+        // Listen for ALL messages
+        window.addEventListener('message', (event) => {
+            console.log('Message from:', event.origin, 'Data:', JSON.stringify(event.data));
+            
+            // Check if origins match
+            if (event.origin !== 'https://websig.xyz' && event.origin !== 'http://localhost:8080') {
+                console.error('origins don\'t match', window.location.origin, event.origin);
+            }
+        });
+        
+        function connectWallet() {
+            const iframe = document.getElementById('websig-iframe');
+            iframe.style.display = 'block';
+            iframe.src = 'https://websig.xyz/connect?origin=' + encodeURIComponent(window.location.origin);
+            iframe.setAttribute('allow', 'publickey-credentials-get; publickey-credentials-create; clipboard-write');
+            
+            iframe.addEventListener('load', () => {
+                console.log('iframe loaded, sending connect message');
+                setTimeout(() => {
+                    iframe.contentWindow.postMessage({
+                        topic: 'websig:connect',
+                        payload: { adapter: 'websig-wallet-adapter' }
+                    }, 'https://websig.xyz');
+                }, 1000);
+            });
+        }
+    </script>
+</body>
+</html>

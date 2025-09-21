@@ -113,10 +113,20 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
   private _dialog: HTMLDialogElement | null = null;
   private _iframe: HTMLIFrameElement | null = null;
   private _messenger: Messenger | null = null;
-  private _websigUrl = 'https://websig.xyz';
+  private _websigUrl: string;
 
   constructor() {
     super();
+    
+    // In development with localhost, use local WebSig if available
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' || 
+      window.location.hostname === '[::1]'
+    );
+    
+    // Default to local WebSig in development for better developer experience
+    this._websigUrl = isLocalhost ? 'http://localhost:3000' : 'https://websig.xyz';
   }
 
   get publicKey() {
@@ -211,12 +221,24 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       iframe.setAttribute('data-testid', 'websig');
       iframe.setAttribute('title', 'WebSig');
       iframe.setAttribute('tabindex', '0');
-      iframe.setAttribute('allow', 'publickey-credentials-get; publickey-credentials-create; clipboard-write');
+      // Allow WebAuthn with explicit origin
+      iframe.setAttribute('allow', `publickey-credentials-get ${this._websigUrl}; publickey-credentials-create ${this._websigUrl}; clipboard-write`);
       
       // Include the origin in the URL so WebSig knows who's connecting
       const connectUrl = new URL(`${this._websigUrl}/connect`);
       connectUrl.searchParams.set('origin', window.location.origin);
       connectUrl.searchParams.set('name', window.location.hostname);
+      
+      // In development, use sandbox mode to allow localhost origins
+      const isDevelopment = typeof process !== 'undefined' && process.env?.NODE_ENV === 'development';
+      const isLocalhost = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' || 
+                         window.location.hostname === '[::1]';
+      
+      if (isDevelopment || isLocalhost) {
+        connectUrl.searchParams.set('sandbox', 'true');
+      }
+      
       iframe.src = connectUrl.toString();
       
       // Style iframe to fill dialog
