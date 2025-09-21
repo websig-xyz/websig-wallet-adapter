@@ -34,30 +34,63 @@
         };
         
         // Listen for ALL messages
+        let popupRef = null;
         window.addEventListener('message', (event) => {
             console.log('Message from:', event.origin, 'Data:', JSON.stringify(event.data));
-            
-            // Check if origins match
-            if (event.origin !== 'https://websig.xyz' && event.origin !== 'http://localhost:8080') {
-                console.error('origins don\'t match', window.location.origin, event.origin);
+            // Accept only messages from the iframe's actual origin
+            const iframe = document.getElementById('websig-iframe');
+            let allowedOrigin = '';
+            try {
+                allowedOrigin = new URL(iframe.src).origin;
+            } catch {}
+            if (allowedOrigin && event.origin !== allowedOrigin) {
+                console.error('Unexpected message origin', event.origin, 'expected', allowedOrigin);
+                return;
+            }
+            if (event.data && event.data.topic === 'websig:connected') {
+                try { if (popupRef && !popupRef.closed) popupRef.close(); } catch {}
+                document.getElementById('status').textContent = 'Connected: ' + (event.data.payload?.publicKey || '');
             }
         });
         
         function connectWallet() {
             const iframe = document.getElementById('websig-iframe');
-            iframe.style.display = 'block';
-            iframe.src = 'https://websig.xyz/connect?origin=' + encodeURIComponent(window.location.origin);
-            iframe.setAttribute('allow', 'publickey-credentials-get; publickey-credentials-create; clipboard-write');
+            const defaultUrl = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname) ? 'http://localhost:3000' : 'https://websig.xyz';
+            const websigUrl = window.localStorage.getItem('websigUrl') || defaultUrl;
+            const url = new URL(websigUrl + '/connect');
+            url.searchParams.set('origin', window.location.origin);
             
-            iframe.addEventListener('load', () => {
-                console.log('iframe loaded, sending connect message');
-                setTimeout(() => {
-                    iframe.contentWindow.postMessage({
-                        topic: 'websig:connect',
-                        payload: { adapter: 'websig-wallet-adapter' }
-                    }, 'https://websig.xyz');
-                }, 1000);
-            });
+            const targetOrigin = url.origin;
+            const isTargetLoopback = /^(https?:\/\/)(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(targetOrigin);
+            
+            if (isTargetLoopback) {
+                // Use iframe for local target; relax frame-ancestors via sandbox flag
+                try {
+                    const isLoopbackPage = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+                    if (isLoopbackPage) url.searchParams.set('sandbox', 'true');
+                } catch {}
+                iframe.style.display = 'block';
+                iframe.src = url.toString();
+                iframe.setAttribute('allow', 'publickey-credentials-get *; publickey-credentials-create *; clipboard-write');
+                iframe.addEventListener('load', () => {
+                    console.log('iframe loaded, sending connect message');
+                    setTimeout(() => {
+                        iframe.contentWindow.postMessage({
+                            topic: 'websig:connect',
+                            payload: { adapter: 'websig-wallet-adapter' }
+                        }, targetOrigin);
+                    }, 500);
+                });
+            } else {
+                // Use popup for production target to avoid frame-ancestors CSP
+                const features = 'width=420,height=640,resizable,scrollbars=no,noopener,noreferrer';
+                popupRef = window.open(url.toString(), 'websig_connect', features);
+                if (!popupRef) {
+                    console.error('Failed to open popup. Please allow popups for this site.');
+                    return;
+                }
+                document.getElementById('status').textContent = 'Popup opened for WebSig connect...';
+            }
         }
     </script>
 </body>

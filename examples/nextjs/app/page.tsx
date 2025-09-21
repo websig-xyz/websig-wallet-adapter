@@ -39,8 +39,12 @@ export default function Home() {
 
   // Initialize wallets
   const wallets = useMemo(() => {
+    const websigUrl = process.env.NEXT_PUBLIC_WEBSIG_URL ||
+      (typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
+        ? 'http://localhost:3000'
+        : 'https://websig.xyz')
     return [
-      new WebSigWalletAdapter(),
+      new WebSigWalletAdapter({ websigUrl }),
       // The adapter will auto-detect localhost and handle it properly
       // You can add other wallets here if needed:
       // new PhantomWalletAdapter(),

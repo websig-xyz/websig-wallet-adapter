@@ -223,6 +223,13 @@ export class WebSigWalletAdapter extends BaseMessageSignerWalletAdapter {
       const connectUrl = new URL(`${this._websigUrl}/connect`);
       connectUrl.searchParams.set('origin', window.location.origin);
       connectUrl.searchParams.set('name', window.location.hostname);
+      // In localhost/loopback, request sandbox mode so the server relaxes frame-ancestors for dev
+      try {
+        const isLoopback = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+        if (isLoopback) {
+          connectUrl.searchParams.set('sandbox', 'true');
+        }
+      } catch {}
       iframe.src = connectUrl.toString();
       
       // Style iframe to fill dialog

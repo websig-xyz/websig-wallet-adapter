@@ -2,20 +2,20 @@
 const nextConfig = {
   reactStrictMode: true,
   async headers() {
+    const websigUrl = process.env.NEXT_PUBLIC_WEBSIG_URL || 'https://websig.xyz'
     return [
       {
         source: '/:path*',
         headers: [
-          // CRITICAL: Allow WebAuthn for websig.xyz iframe
-          // This delegates WebAuthn permissions to the iframe
+          // Delegate WebAuthn permission to the iframe origin (WebSig)
           { 
             key: 'Permissions-Policy', 
-            value: 'publickey-credentials-get=(self "https://websig.xyz"), publickey-credentials-create=(self "https://websig.xyz")' 
+            value: `publickey-credentials-get=(self "${websigUrl}"), publickey-credentials-create=(self "${websigUrl}")` 
           },
-          // Allow embedding from localhost for development
+          // Allow loading iframe from WebSig and local loopback in dev
           { 
             key: 'Content-Security-Policy', 
-            value: "frame-src 'self' https://websig.xyz http://localhost:* https://localhost:*; frame-ancestors 'self';" 
+            value: `frame-src 'self' ${websigUrl} http://localhost:* https://localhost:*; frame-ancestors 'self';` 
           },
         ],
       },
